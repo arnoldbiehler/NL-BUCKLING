@@ -1,0 +1,164 @@
+FINISH
+/CLEAR,ALL
+
+/UIS,MSGPOP,3
+/PREP7
+
+!! GENERAL BEAM DATA
+a = 30
+b = 10
+e = 1.5
+
+L = 400     ! Beam length in mm
+F = 1       ! Force applied to the beam for the eigen-buckling analysis
+
+beam_id = 'TR-CONTACT'  ! Identifier for the beam type
+material = 'steel'      ! Material of the beam
+
+DISP_FACTOR = 1.4       ! Displacement factor for buckling analysis
+
+DISPL = 1   ! Total displacement of the head    
+
+!! MATERIAL PROPERTIES
+
+/INPUT,material,txt,materials,,  ! Input material properties from a text file
+
+MP,EX,1,Ex
+MP,PRXY,1,PRxy   
+MP,MU,1,MU
+
+TB,PLAS,,,,BISO     ! Define plasticity material model
+TBTEMP,0           
+TBDATA,1,yield_stress,epsilon_p  ! Define yield stress and plastic strain
+
+MP,EX,2,200000
+MP,PRXY,2,0.3
+MP,MU,2,MU          ! Coefficient of friction for material 2
+
+!! ELEMENT DEFINITIONS
+ET,1,SOLID185       ! Define element type 1 as SOLID185
+KEYOPT,1,2,2        ! Set key options for element type 1
+
+ET,2,TARGE170       ! Define element type 2 as TARGE170
+KEYOPT,2,1,0
+KEYOPT,2,2,1
+
+ET,3,CONTA174       ! Define element type 3 as CONTA174
+KEYOPT,3,1,0
+KEYOPT,3,5,3
+KEYOPT,3,6,1
+
+*IF,beam_id,EQ,'PLETINA',THEN
+    e_size = b/4
+*ELSE
+    e_size = e/3
+*ENDIF
+
+!! GEOMETRY
+
+/INPUT,beam_id,txt,beams,,
+
+!! MESHING
+
+ESIZE,e_size        ! Set element size
+
+MSHAPE,0            ! Hexaedrons
+MSHKEY,1            ! Mapped meshing
+VMESH,all
+
+!! BOUNDARY CONDITIONS
+NSEL,S,LOC,Y,0
+D,ALL,ALL           ! Apply all DOF constraints at the bottom of the beam
+CM,D_NODES,NODE
+NSEL,ALL
+
+NSEL,S,LOC,Y,L
+D,ALL,UX
+D,ALL,UZ            ! Apply all DOF constraints at the top of the beam
+CM,F_NODES,NODE
+NSEL,ALL
+
+CMSEL,S,F_NODES
+*get,f_count,NODE,,COUNT
+F,ALL,FY,-F/f_count
+ALLSEL
+
+/SOLU
+PSTRES,ON                ! Activate stress stiffening
+SOLVE                    ! Solve the static analysis
+FINISH
+
+/SOLU
+ANTYPE,buckle            ! Buckling analysis type
+BUCOPT,SUBSP,4,0,0,RANGE ! Define buckling options
+MXPAND,4,,,yes           ! Expand mode shapes
+SOLVE                    ! Solve the buckling analysis
+
+/POST1
+SET,FIRST                ! Set the first load step
+
+*GET,linear_buckling_load,ACTIVE,0,SET,TIME  ! Get critical load factor
+
+FINISH
+
+/PREP7
+UPGEOM,DISP_FACTOR,1,1,jbname,rst  ! Update geometry with the deformed shape
+
+*GET,MAXY,NODE,,MXLOC,Y   ! Get maximum Y location of nodes
+
+k,3001,50,MAXY,50         ! Create keypoints for top surface
+k,3002,-50,MAXY,50
+k,3003,-50,MAXY,-50
+k,3004,50,MAXY,-50
+
+ASEL,NONE
+
+A,3001,3002,3003,3004
+CM,CABEZAL,AREA
+
+MAT,1
+TYPE,3                   ! Set element type for top surface contact (beam side)
+CMSEL,S,F_NODES
+ESURF,ALL                ! Generate surface elements
+
+TYPE,2                   ! Set element type for head contact
+MAT,2                    ! Set material for head contact
+CMSEL,S,CABEZAL
+ESIZE,2.5
+NSEL,NONE
+AMESH,ALL
+CM,CABEZAL_N,NODE
+ALLSEL
+
+/SOLU
+
+ANTYPE,STATIC
+
+CNCHECK,ADJUST           ! Adjust contact elements to be initially in contact
+NLGEOM,ON
+NEQIT,50                 ! Maximum number of iterations per time step
+OUTPR,ALL,ALL            ! Output all results
+OUTRES,ALL,ALL           ! Output all results to the result file
+AUTOTS,ON                ! Enable automatic time stepping
+DELTIM,0.005,0.005,0.05  ! Time step control
+
+TIME,DISPL*1.1+MAXY-L  ! Set simulation time (equals to total displacement)
+
+CMSEL,S,D_NODES
+D,ALL,ALL
+ALLSEL
+
+CMSEL,S,F_NODES
+DDELE,ALL,ALL
+FDELE,ALL,ALL
+ALLSEL
+
+CMSEL,S,CABEZAL_N
+D,ALL,UX
+D,ALL,UZ
+D,ALL,UY,-DISPL*1.1-MAXY+L !Set total displacement
+ALLSEL
+
+SOLVE
+
+SAVE

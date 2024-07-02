@@ -1,0 +1,8 @@
+
+MU = 0.7
+
+Ex = 209.27
+PRxy = 0.3
+
+yield_stress = 0.2638
+epsilon_p = 0.2154
