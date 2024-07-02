@@ -11,7 +11,6 @@ Nonlinear buckling is a critical phenomenon in structural engineering where stru
 2. Set the `NL-BUCKLING` folder as the working directory.
 3. For the `jobname`, initially use an arbitrary name. This name will be changed depending on the analysis.
 4. Go to `File -> Read Input From -> scripts -> main_tfg.txt`.
-5. Start the simulation.
 
 ## How to edit it?
 
