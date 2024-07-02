@@ -84,7 +84,7 @@ F,ALL,FY,-F/f_count
 ALLSEL
 
 /SOLU
-PSTRES,ON                ! Activate stress stiffening
+PSTRES,ON
 SOLVE                    ! Solve the static analysis
 FINISH
 
